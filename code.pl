@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
-
+use utf8;
+binmode(STDOUT, ":utf8");
 use Modern::Perl '2015';
 use autodie;
 
@@ -18,18 +19,21 @@ use JSON;
 my $dkim = Mail::DKIM::Verifier->new();
 my $message;
 
-open(HANDLE, "data/facebook.eml");
-
-#while (<STDIN>)
-while (<HANDLE>)
 {
-    $message .= $_;
-    # remove local line terminators
-    chomp;
-    s/\015$//;
+    no warnings 'once';
+    open(HANDLE, "data/facebook.eml");
 
-    # use SMTP line terminators
-    $dkim->PRINT("$_\015\012");
+    #while (<STDIN>)
+    while (<HANDLE>) {
+        $message .= $_;
+        # remove local line terminators
+        chomp;
+        s/\015$//;
+
+        # use SMTP line terminators
+        $dkim->PRINT("$_\015\012");
+    }
+    close(HANDLE) or die("Failed to close?");
 }
 $dkim->CLOSE;
 
@@ -73,6 +77,21 @@ chomp $description;
 print "\tcontent_type: " . $content_type . "\n";
 print "\temail structure:\n" . $description . "\n";
 
+sub get_dkim_signed_headers {
+    my ($header_obj) = @_;
+    my $dkim_sig = $header_obj->header_raw("DKIM-Signature");
+    return 0 if (not $dkim_sig);
+    my @parts = split /; /, $dkim_sig;
+    foreach my $part (@parts) {
+        chomp $part;
+        my @tag = split /=/, $part;
+        if ($tag[0] eq "h") {
+            my $tagdata = $tag[1];
+            return split /:/, $tagdata;
+        }
+    }
+}
+
 #my @pairs = $parsed->header_str_pairs;
 my $header = $email->header_obj;
 use Data::Dumper;
@@ -80,8 +99,12 @@ use Data::Dumper;
 # DKIM-Signature h=Date:To:Subject:From:MIME-Version:Content-Type;
 
 #print $header->as_string;
-print $header->header_raw("mIme-vErSiOn");
-#print Dumper(@header);
-#print Dumper($header);
-#print Dumper(%header3);
+my @vhead = get_dkim_signed_headers($header);
+
+foreach my $hname (@vhead) {
+    my $hdata = $header->header_str($hname);
+    print "VALIDATED: " . $hname . ": " . $hdata . "\n" if $hdata;
+}
+
+
 print("\n\n-----------------------------------------------------------------------\n");
