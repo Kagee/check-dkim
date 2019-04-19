@@ -16,49 +16,31 @@ BEGIN {
 END { closelog(); }
 
 use Fcntl; # O_RDONLY
-
 use Cwd;
-
 #use Redis;
-
 use Email::MIME;
-
 use Mail::DKIM::Verifier;
-
 use JSON;
-
-
 
 
 my $dkim_obj = Mail::DKIM::Verifier->new();
 my $message;
 
-{
-    no warnings 'once';
-    my $inputfile = "data/facebook2.eml";
-    open(my $EMAIL_HANDLE, "<", $inputfile) or do {
-        my $error = "Failed to open inputfile for reading: ". $inputfile;
-        #syslog(LOG_ERR|LOG_LOCAL6, "Failed to open inputfile for reading: ". $inputfile);
-        die($error);
-    };
+# This will read (and/or) STDIN and first command line argument
+while (<>) {
+    # Email::Mime
+    $message .= $_;
 
-     syslog('info', '%s', 'this is another test');
-    syslog('mail|warning', 'this is a better test: %d', time);
-    closelog();
-
-
-    #while (<STDIN>)
-    while (<$EMAIL_HANDLE>) {
-        $message .= $_;
-        # remove local line terminators
-        chomp;
-        s/\015$//;
-
-        # use SMTP line terminators
-        $dkim_obj->PRINT("$_\015\012");
-    }
-    close($EMAIL_HANDLE) or die("Failed to close?");
+    # Mail::Dkim::Verifier
+    # remove local line terminators
+    chomp;
+    s/\015$//;
+    # use SMTP line terminators
+    $dkim_obj->PRINT("$_\015\012");
 }
+
+die("Message was not filled from stdin or file, dies") unless($message);
+
 $dkim_obj->CLOSE;
 
 my $result = $dkim_obj->result;
@@ -77,9 +59,14 @@ foreach my $signature ($dkim_obj->signatures)
 }
 
 # the alleged author of the email may specify how to handle email
+print Dumper($dkim_obj->policies);
 foreach my $policy ($dkim_obj->policies)
 {
-    #print ("Policy: " . $policy);
+    # https://metacpan.org/pod/Mail::DKIM::DkimPolicy
+    # Mail::DKIM::DkPolicy
+    # Mail::DKIM::AuthorDomainPolicy
+    print $policy->location();
+    print ("Policy: " . $policy->apply($dkim_obj) . "\n");
     print "\t\tWARNING: fraudulent message" if ($policy->apply($dkim_obj) eq 'reject');
 }
 print("Email headers:\n");
