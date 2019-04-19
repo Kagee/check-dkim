@@ -4,6 +4,17 @@ binmode(STDOUT, ":utf8");
 use Modern::Perl '2015';
 use autodie;
 
+my $LOG_NAME = "check-dkim";
+
+use Sys::Syslog qw(:standard :macros);
+
+BEGIN {
+    openlog($LOG_NAME, "ndelay,pid", "local0") or die("$LOG_NAME: Critical error, failed to connect to syslog");
+    $SIG{'__WARN__'} = sub { syslog( LOG_WARNING, @_ ); warn @_ };
+    $SIG{'__DIE__'}  = sub { syslog( LOG_ERR, @_ ); die @_ };
+}
+END { closelog(); }
+
 use Fcntl; # O_RDONLY
 
 use Cwd;
@@ -16,47 +27,60 @@ use Mail::DKIM::Verifier;
 
 use JSON;
 
-my $dkim = Mail::DKIM::Verifier->new();
+
+
+
+my $dkim_obj = Mail::DKIM::Verifier->new();
 my $message;
 
 {
     no warnings 'once';
-    open(HANDLE, "data/facebook.eml");
+    my $inputfile = "data/facebook2.eml";
+    open(my $EMAIL_HANDLE, "<", $inputfile) or do {
+        my $error = "Failed to open inputfile for reading: ". $inputfile;
+        #syslog(LOG_ERR|LOG_LOCAL6, "Failed to open inputfile for reading: ". $inputfile);
+        die($error);
+    };
+
+     syslog('info', '%s', 'this is another test');
+    syslog('mail|warning', 'this is a better test: %d', time);
+    closelog();
+
 
     #while (<STDIN>)
-    while (<HANDLE>) {
+    while (<$EMAIL_HANDLE>) {
         $message .= $_;
         # remove local line terminators
         chomp;
         s/\015$//;
 
         # use SMTP line terminators
-        $dkim->PRINT("$_\015\012");
+        $dkim_obj->PRINT("$_\015\012");
     }
-    close(HANDLE) or die("Failed to close?");
+    close($EMAIL_HANDLE) or die("Failed to close?");
 }
-$dkim->CLOSE;
+$dkim_obj->CLOSE;
 
-my $result = $dkim->result;
+my $result = $dkim_obj->result;
 
 print("DKMIM:");
 print("\ttesult: " . $result . "\n");
 
 if ($result ne "pass") {
-    my $detail = $dkim->result_detail;
+    my $detail = $dkim_obj->result_detail;
     print("\t\tresult details: " . $detail . "\n");
 }
 # there might be multiple signatures, what is the result per signature?
-foreach my $signature ($dkim->signatures)
+foreach my $signature ($dkim_obj->signatures)
 {
     print "\t\tsignature identity: " . $signature->identity . ', verify result: ' . $signature->result_detail . "\n";
 }
 
 # the alleged author of the email may specify how to handle email
-foreach my $policy ($dkim->policies)
+foreach my $policy ($dkim_obj->policies)
 {
     #print ("Policy: " . $policy);
-    print "\t\tWARNING: fraudulent message" if ($policy->apply($dkim) eq 'reject');
+    print "\t\tWARNING: fraudulent message" if ($policy->apply($dkim_obj) eq 'reject');
 }
 print("Email headers:\n");
 my $email = Email::MIME->new($message);
