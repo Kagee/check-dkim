@@ -98,7 +98,7 @@ sub get_dkim_signed_headers {
         my @tag = split /=/, $part;
         if ($tag[0] eq "h") {
             my $tagdata = $tag[1];
-            return split /:/, $tagdata;
+            return uniq split /:/, $tagdata;
         }
     }
 }
