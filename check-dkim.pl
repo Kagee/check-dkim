@@ -30,26 +30,6 @@ use JSON;
 use Email::Address::List;
 use List::Util qw(uniq);
 
-my %email_data;
-
-#my %random = (
-#        "Leonardo" => '1123 Fib Place',
-#        "Utako"   => 'Cantor Å Hotel, Room 1',
-#    );
-
-#my @cats = ( 'Daisy', 'Petunøia', 'Tuxedo', "...", 1, 9191919191919191919191919191 );
-
-#$cats[5] = '9191919191919191919191919191';
-
-#$email_data{hash} = \%random;
-#$email_data{array} = \@cats;
-
-#my $utf8_encoded_json_text = to_json(\%email_data, {pretty => 1});
-
-#say $utf8_encoded_json_text;
-
-#die("End of test");
-
 my $dkim_obj = Mail::DKIM::Verifier->new();
 my $message;
 
@@ -157,19 +137,7 @@ sub get_dkim_signed_headers {
     }
 }
 
-#my @pairs = $parsed->header_str_pairs;
-#my $header = $email->header_obj;
-#use Data::Dumper;
-
-# DKIM-Signature h=Date:To:Subject:From:MIME-Version:Content-Type;
-
-#print $header->as_string;
-#my @vhead = get_dkim_signed_headers($header);
-
-#foreach my $hname (@vhead) {
-#    my $hdata = $header->header_str($hname);
-#    print "VALIDATED: " . $hname . ": " . $hdata . "\n" if $hdata;
-#}
+my %email_data;
 
 $email_data{"DKIM"} = get_dkim_data $dkim_obj;
 $email_data{"EMAIL"} = get_email_data $message;
