@@ -1,6 +1,6 @@
 #### Required Perl packages
 
-`sudo apt install libemail-mime-perl libredis-perl libmail-dkim-perl libmodern-perl-perl libjson-perl`
+`sudo apt install libemail-mime-perl libredis-perl libmail-dkim-perl libmodern-perl-perl libjson-perl libemail-address-list-perl`
 
 [Email::Mime](https://metacpan.org/pod/Email::MIME)
  * `sudo apt install libemail-mime-perl`
@@ -16,3 +16,6 @@
 
 [JSON](https://metacpan.org/pod/JSON)
  * `sudo apt install libjson-perl`
+
+[Email::Address::List](https://metacpan.org/pod/Email::Address::List)
+ * `sudo apt install libemail-address-list-perl`
